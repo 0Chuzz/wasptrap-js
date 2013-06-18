@@ -100,6 +100,7 @@ Game = {
         ret.canvas = canvas;
         ret.ctx = canvas.getContext("2d");
         ret.ticks = 0;
+        ret.score = 0;
         this.balls = [Ball.create()];
         return this;
     }
@@ -142,10 +143,14 @@ Game = {
         for (i in this.balls){
             this.balls[i].drawOn(ctx);
         }
+        ctx.fillStyle = "#000000";
+        ctx.textAlign = "right";
+        ctx.fillText(this.score, 780, 20);
     }
 
     , addBall: function (ball){
         this.balls.push(ball);
+        this.score += 9;
     }
 }
 
