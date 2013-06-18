@@ -123,6 +123,7 @@ Game = {
             this.balls[i].step();
             this.checkOOB(this.balls[i]);
         }
+        this.checkCollisions();
 
     }
 
@@ -133,6 +134,21 @@ Game = {
         var ydiff = (obj.y < 0) ? obj.y : (obj.y > height) ? obj.y - height : 0;
         if ( xdiff !== 0 || ydiff !== 0){
             obj.onBounce(xdiff, ydiff);
+        }
+    }
+
+    , checkCollisions: function(){
+        var xlow = this.wasp.x;
+        var ylow = this.wasp.y;
+        var xhi = xlow + this.wasp.width;
+        var yhi = ylow + this.wasp.height;
+        for(i in this.balls){
+            var x = this.balls[i].x;
+            var y = this.balls[i].y;
+            if (x > xlow && x < xhigh && y > ylow && y < yhigh){
+                this.stopTurn();
+                break;
+            }
         }
     }
 
@@ -152,6 +168,9 @@ Game = {
         this.balls.push(ball);
         this.score += 9;
     }
+
+    , stopTurn: function () {
+        this.state = 1;
 }
 
 
