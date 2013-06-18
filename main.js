@@ -2,15 +2,23 @@
 Wasp = {
       width: 40
     , height: 40
-    , minSpeed: 10
+    , minSpeed: 1
+    , maxSpeed: 15
+    , friction: 0.05
+    , acceleration: 1
 
     , create : function(){
         var ret = this;
         ret.x = 400;
         ret.y = 300;
-        ret.speed = 0;
-        ret.direction = 0;
+        ret.speed = this.minSpeed;
+        ret.xDir = 0;
+        ret.yDir = 0;
         return ret;
+    }
+
+    , getDirection: function(){
+        return Math.atan2(this.yDir, this.xDir);
     }
 
     , drawOn: function(ctx) {
@@ -19,16 +27,43 @@ Wasp = {
     }
 
     , step: function(){
-        this.x += this.speed * Math.cos(this.direction);
-        this.y += this.speed * Math.sin(this.direction);
+        this.x += this.speed * this.xDir;
+        this.y += this.speed * this.yDir;
+        if(this.speed > this.minSpeed) {
+            this.speed -= this.friction;
+        }
     }
 
     , onBounce: function(xdiff, ydiff){
         this.x -= xdiff;
         this.y -= ydiff;
-        this.speed = 0;
+        this.speed = this.minSpeed;
+    }
+    
+    , accelerate: function(){
+        if(this.speed < this.maxSpeed && this.accelpressed === false){
+            this.speed += this.acceleration;
+        }
+        this.accelpressed = true;
     }
 
+    , unaccel: function(){ this.accelpressed = false; }
+
+    , toUp: function(){
+        if(this.yDir > -1) this.yDir--;
+    }
+
+    , toDown: function(){
+        if(this.yDir < 1) this.yDir++;
+    }
+
+    , toLeft: function(){
+        if(this.xDir > -1) this.xDir--;
+    }
+
+    , toRight: function(){
+        if(this.xDir < 1) this.xDir++;
+    }
 
 }
 
@@ -36,7 +71,7 @@ Ball = {
       radius: 10
     , width: 10
     , height: 10
-    , minSpeed: 10
+    , minSpeed: 1
     , maxSpeed: 100
 
     , create : function(){
@@ -98,11 +133,53 @@ Game = {
     , initialize: function(canvas){
         var ret = this;
         ret.canvas = canvas;
+        document.addEventListener("keydown", function(evt){ ret.onKeyDown(evt);}, false);
+        document.addEventListener("keyup", function(evt){ ret.onKeyUp(evt);}, false);
         ret.ctx = canvas.getContext("2d");
         ret.ticks = 0;
         ret.score = 0;
         this.balls = [Ball.create()];
         return this;
+    }
+
+    , onKeyUp: function(evt){
+        switch(evt.keyCode){
+            case 32: // space
+                this.wasp.unaccel();
+                break;
+            case 37: // left
+                this.wasp.toRight();
+                break;
+            case 38: // up
+                this.wasp.toDown();
+                break;
+            case 39: // right
+                this.wasp.toLeft();
+                break;
+            case 40: // down
+                this.wasp.toUp();
+                break;
+        };
+    }
+
+    , onKeyDown: function(evt){
+        switch(evt.keyCode){
+            case 32: // space
+                this.wasp.accelerate();
+                break;
+            case 37: // left
+                this.wasp.toLeft();
+                break;
+            case 38: // up
+                this.wasp.toUp();
+                break;
+            case 39: // right
+                this.wasp.toRight();
+                break;
+            case 40: // down
+                this.wasp.toDown();
+                break;
+        };
     }
     
     , startLoop: function () {
@@ -134,6 +211,7 @@ Game = {
         var ydiff = (obj.y < 0) ? obj.y : (obj.y > height) ? obj.y - height : 0;
         if ( xdiff !== 0 || ydiff !== 0){
             obj.onBounce(xdiff, ydiff);
+            this.score++;
         }
     }
 
@@ -145,7 +223,7 @@ Game = {
         for(i in this.balls){
             var x = this.balls[i].x;
             var y = this.balls[i].y;
-            if (x > xlow && x < xhigh && y > ylow && y < yhigh){
+            if (x > xlow && x < xhi && y > ylow && y < yhi){
                 this.stopTurn();
                 break;
             }
@@ -171,6 +249,7 @@ Game = {
 
     , stopTurn: function () {
         this.state = 1;
+    }
 }
 
 
