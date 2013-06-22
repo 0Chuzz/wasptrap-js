@@ -1,3 +1,54 @@
+Box = {
+    centered: function(x,y, w, h){
+        var ret = Object.create(this);
+        ret.xmin = x - w/2;
+        ret.ymin = y - h/2;
+        ret.xmax = x + w/2;
+        ret.ymax = y + h/2;
+        return ret;
+    },
+    topleft: function(x,y, w,h){
+        var ret = Object.create(this);
+        ret.xmin = x;
+        ret.ymin = y;
+        ret.xmax = x + w;
+        ret.ymax = y + h;
+        return ret;
+    },
+    borders: function(xmin,ymin, xmax, ymax){
+        var ret = Object.create(this);
+        ret.xmin = xmin;
+        ret.ymin = ymin;
+        ret.xmax = xmax;
+        ret.ymax = ymax;
+        return ret;
+    },
+    collides: function(obj){
+        var ret = true;
+        var condcheck = false;
+        if("x" in obj){
+           ret = ret && obj.x > this.xmin && obj.x < this.xmax;
+           condcheck = true;
+        }
+        if("y" in obj){
+           ret = ret && obj.y > this.ymin && obj.y < this.ymax;
+           condcheck = true;
+        }
+        if("xmin" in obj && "xmax" in obj){
+           ret = ret && obj.xmin<this.xmax && obj.xmax > this.xmin;
+           condcheck = true;
+        }
+        if("ymin" in obj && "ymax" in obj){
+           ret = ret && obj.ymin<this.ymax && obj.ymax > this.ymin;
+           condcheck = true;
+        }
+        return ret && condcheck;
+    },
+    exits: function(obj){
+        var ret = false;
+
+    }
+}
 
 Wasp = {
       width: 40
@@ -24,6 +75,8 @@ Wasp = {
     , drawOn: function(ctx) {
         ctx.fillStyle="#ffff00";
         ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillStyle="#000000";
+        ctx.fillRect(this.x, this.y, 1, 1);
     }
 
     , step: function(){
@@ -38,6 +91,10 @@ Wasp = {
         this.x -= xdiff;
         this.y -= ydiff;
         this.speed = this.minSpeed;
+    }
+    
+    , getBoundingBox: function(){
+        return Box.topleft(this.x, this.y, this.width, this.height);
     }
     
     , accelerate: function(){
@@ -69,8 +126,6 @@ Wasp = {
 
 Ball = {
       radius: 10
-    , width: 10
-    , height: 10
     , minSpeed: 1
     , maxSpeed: 100
 
@@ -81,6 +136,10 @@ Ball = {
         var direction = Math.random()*360;
         ret.setSpeed(this.minSpeed, direction);
         return ret;
+    }
+
+    , getBoundingBox: function (){
+        return Box.centered(this.x, this.y, this.radius, this.radius);
     }
     
     , setSpeed: function(speed, direction){
@@ -94,6 +153,8 @@ Ball = {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2, false);
         ctx.closePath();
         ctx.fill();
+        ctx.fillStyle="#000000";
+        ctx.fillRect(this.x, this.y, 1, 1);
     }
 
     , step: function(){
@@ -205,10 +266,11 @@ Game = {
     }
 
     , checkOOB: function(obj){
-        var width = this.canvas.width - obj.width;
-        var height = this.canvas.height - obj.height;
-        var xdiff = (obj.x < 0) ? obj.x : (obj.x > width) ? obj.x - width : 0;
-        var ydiff = (obj.y < 0) ? obj.y : (obj.y > height) ? obj.y - height : 0;
+        var bb = obj.getBoundingBox();
+        var width = this.canvas.width;
+        var height = this.canvas.height;
+        var xdiff = (bb.xmin < 0) ? bb.xmin : (bb.xmax > width) ? bb.xmax - width : 0;
+        var ydiff = (bb.ymin < 0) ? bb.ymin : (bb.ymax > height) ? bb.ymax - height : 0;
         if ( xdiff !== 0 || ydiff !== 0){
             obj.onBounce(xdiff, ydiff);
             this.score++;
@@ -216,14 +278,9 @@ Game = {
     }
 
     , checkCollisions: function(){
-        var xlow = this.wasp.x;
-        var ylow = this.wasp.y;
-        var xhi = xlow + this.wasp.width;
-        var yhi = ylow + this.wasp.height;
+        var wbb = this.wasp.getBoundingBox();
         for(i in this.balls){
-            var x = this.balls[i].x;
-            var y = this.balls[i].y;
-            if (x > xlow && x < xhi && y > ylow && y < yhi){
+            if (wbb.collides(this.balls[i].getBoundingBox())){
                 this.stopTurn();
                 break;
             }
@@ -249,6 +306,7 @@ Game = {
 
     , stopTurn: function () {
         this.state = 1;
+        document.writeln("you died");
     }
 }
 
