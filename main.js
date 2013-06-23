@@ -179,6 +179,9 @@ Ball = {
             Game.addBall(newBall);
             var direction = Math.atan2(dx, dy);
             this.setSpeed(this.minSpeed, direction);
+            Game.score += 9;
+        } else {
+            Game.score++;
         }
     }
     , cloneBall: function(oldBall, xdiff, ydiff){
@@ -273,7 +276,6 @@ Game = {
         var ydiff = (bb.ymin < 0) ? bb.ymin : (bb.ymax > height) ? bb.ymax - height : 0;
         if ( xdiff !== 0 || ydiff !== 0){
             obj.onBounce(xdiff, ydiff);
-            this.score++;
         }
     }
 
