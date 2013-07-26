@@ -190,7 +190,8 @@ Ball = {
 }
 
 Game = {
-      wasp: Wasp.create()
+      width: 800
+    , height: 600
     , balls: []
     , fps: 60
 
@@ -202,8 +203,16 @@ Game = {
         ret.ctx = canvas.getContext("2d");
         ret.ticks = 0;
         ret.score = 0;
-        this.balls = [Ball.create()];
+        ret.lives = 3;
+        ret.ctx.scale(this.canvas.width/this.width,
+                this.canvas.height/this.height);
+        ret.newTurn();
         return this;
+    }
+
+    , newTurn: function() {
+        this.wasp = Wasp.create();
+        this.balls = [Ball.create()];
     }
 
     , onKeyUp: function(evt){
@@ -248,7 +257,11 @@ Game = {
     
     , startLoop: function () {
         var jswut = this;
-        setInterval(function () {jswut.loop();}, 1000/this.fps);
+        this._loop = setInterval(function () {jswut.loop();}, 1000/this.fps);
+    }
+
+    , stopLoop: function(){
+        clearInterval(this._loop);
     }
 
     , loop: function(){
@@ -270,8 +283,8 @@ Game = {
 
     , checkOOB: function(obj){
         var bb = obj.getBoundingBox();
-        var width = this.canvas.width;
-        var height = this.canvas.height;
+        var width = this.width;
+        var height = this.height;
         var xdiff = (bb.xmin < 0) ? bb.xmin : (bb.xmax > width) ? bb.xmax - width : 0;
         var ydiff = (bb.ymin < 0) ? bb.ymin : (bb.ymax > height) ? bb.ymax - height : 0;
         if ( xdiff !== 0 || ydiff !== 0){
@@ -291,14 +304,14 @@ Game = {
 
     , draw: function () {
         var ctx = this.ctx;
-        ctx.clearRect(0, 0, 800, 600);
+        ctx.clearRect(0, 0, this.width, this.height);
         this.wasp.drawOn(ctx);
         for (i in this.balls){
             this.balls[i].drawOn(ctx);
         }
         ctx.fillStyle = "#000000";
         ctx.textAlign = "right";
-        ctx.fillText(this.score, 780, 20);
+        ctx.fillText(this.score, this.width - 20, 20);
     }
 
     , addBall: function (ball){
@@ -307,14 +320,21 @@ Game = {
     }
 
     , stopTurn: function () {
-        this.state = 1;
-        document.writeln("you died");
+        this.lives -= 1;
+        if(this.lives === 0){
+            document.writeln("game over")
+            this.stopLoop();
+        } else {
+            this.newTurn();
+        }
     }
 }
 
 
 window.onload = function (){
     var ctx = document.getElementById("screen");
+    ctx.width = window.innerWidth - 2;
+    ctx.height = window.innerHeight - 10;
     Game.initialize(ctx);
     Game.startLoop();
 }
