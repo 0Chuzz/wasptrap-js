@@ -1,8 +1,8 @@
-/*jslint browser: true, plusplus: true, sloppy: true, vars: true */
+/*jslint browser: true, plusplus: true, sloppy: false, vars: true */
 var Game;
 
 var Box = {
-    centered: function (x, y, w, h) {
+    centered: function(x, y, w, h) {
         var ret = Object.create(this);
         ret.xmin = x - w / 2;
         ret.ymin = y - h / 2;
@@ -10,7 +10,7 @@ var Box = {
         ret.ymax = y + h / 2;
         return ret;
     },
-    topleft: function (x, y, w, h) {
+    topleft: function(x, y, w, h) {
         var ret = Object.create(this);
         ret.xmin = x;
         ret.ymin = y;
@@ -18,7 +18,7 @@ var Box = {
         ret.ymax = y + h;
         return ret;
     },
-    borders: function (xmin, ymin, xmax, ymax) {
+    borders: function(xmin, ymin, xmax, ymax) {
         var ret = Object.create(this);
         ret.xmin = xmin;
         ret.ymin = ymin;
@@ -26,7 +26,7 @@ var Box = {
         ret.ymax = ymax;
         return ret;
     },
-    collides: function (obj) {
+    collides: function(obj) {
         var ret = true,
             condcheck = false;
         if (obj.x !== undefined) {
@@ -47,7 +47,7 @@ var Box = {
         }
         return ret && condcheck;
     },
-    exits: function (obj) {
+    exits: function(obj) {
         var ret = false;
 
     }
@@ -61,64 +61,70 @@ var Wasp = {
     friction: 0.05,
     acceleration: 1,
 
-    create: function () {
+    create: function() {
         var ret = this;
-        ret.x = 400;
-        ret.y = 300;
-        ret.speed = this.minSpeed;
         ret.xDir = 0;
         ret.yDir = 0;
+        this.teleport(0, 0);
         return ret;
     },
-    getDirection: function () {
+    getDirection: function() {
         return Math.atan2(this.yDir, this.xDir);
     },
-    drawOn: function (ctx) {
+    drawOn: function(ctx) {
         ctx.fillStyle = "#ffff00";
         ctx.fillRect(this.x, this.y, this.width, this.height);
         ctx.fillStyle = "#000000";
         ctx.fillRect(this.x, this.y, 1, 1);
     },
-    step: function () {
+    step: function(game) {
         this.x += this.speed * this.xDir;
         this.y += this.speed * this.yDir;
-        if (this.speed > this.minSpeed) {
+        if (this.accelpressed > 0 && this.speed < this.maxSpeed) {
+            this.speed += this.acceleration;
+            this.accelpressed -= 1;
+        } else if (this.speed > this.minSpeed) {
             this.speed -= this.friction;
         }
+        var oob = game.checkOOB(this);
+        if (oob.x !== 0 || oob.y !== 0) {
+            this.onBounce(oob.x, oob.y);
+        }
     },
-    onBounce: function (xdiff, ydiff) {
+    onBounce: function(xdiff, ydiff) {
         this.x -= xdiff;
         this.y -= ydiff;
         this.speed = this.minSpeed;
     },
-    getBoundingBox: function () {
+    getBoundingBox: function() {
         return Box.topleft(this.x, this.y, this.width, this.height);
     },
-    accelerate: function () {
-        if (this.speed < this.maxSpeed && this.accelpressed === false) {
-            this.speed += this.acceleration;
-        }
-        this.accelpressed = true;
+    accelerate: function() {
+        this.accelpressed = 1;
     },
-    unaccel: function () {
-        this.accelpressed = false;
+    teleport: function(x, y) {
+        var ret = this;
+        ret.x = x;
+        ret.y = y;
+        ret.speed = this.minSpeed;
+
     },
-    toUp: function () {
+    toUp: function() {
         if (this.yDir > -1) {
             this.yDir--;
         }
     },
-    toDown: function () {
+    toDown: function() {
         if (this.yDir < 1) {
             this.yDir++;
         }
     },
-    toLeft: function () {
+    toLeft: function() {
         if (this.xDir > -1) {
             this.xDir--;
         }
     },
-    toRight: function () {
+    toRight: function() {
         if (this.xDir < 1) {
             this.xDir++;
         }
@@ -130,7 +136,7 @@ var Ball = {
     radius: 10,
     minSpeed: 1,
     maxSpeed: 100,
-    create: function () {
+    create: function() {
         var ret = Object.create(this);
         ret.x = 200 + Math.random() * 100;
         ret.y = 100 + Math.random() * 100;
@@ -138,27 +144,29 @@ var Ball = {
         ret.setSpeed(this.minSpeed, direction);
         return ret;
     },
-    getBoundingBox: function () {
+    getBoundingBox: function() {
         return Box.centered(this.x, this.y, this.radius, this.radius);
     },
-    setSpeed: function (speed, direction) {
+    setSpeed: function(speed, direction) {
         this.dx = speed * Math.cos(direction);
         this.dy = speed * Math.sin(direction);
     },
-    drawOn: function (ctx) {
+    drawOn: function(ctx) {
         ctx.fillStyle = "#ff0000";
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(this.x, this.y, 1, 1);
+
     },
-    step: function () {
+    step: function(game) {
         this.x += this.dx;
         this.y += this.dy;
+        var oob = game.checkOOB(this);
+        if (oob.x !== 0 || oob.y !== 0)
+            this.onBounce(oob.x, oob.y);
     },
-    onBounce: function (xdiff, ydiff) {
+    onBounce: function(xdiff, ydiff) {
         this.x -= 2 * xdiff;
         if (xdiff !== 0) {
             this.dx *= -1;
@@ -184,7 +192,7 @@ var Ball = {
             Game.score++;
         }
     },
-    cloneBall: function (oldBall, xdiff, ydiff) {
+    cloneBall: function(oldBall, xdiff, ydiff) {
         return Ball.create();
     }
 };
@@ -194,13 +202,13 @@ var Game = {
     height: 600,
     balls: [],
     fps: 60,
-    initialize: function (canvas) {
+    initialize: function(canvas) {
         var ret = this;
         ret.canvas = canvas;
-        document.addEventListener("keydown", function (evt) {
+        document.addEventListener("keydown", function(evt) {
             ret.onKeyDown(evt);
         }, false);
-        document.addEventListener("keyup", function (evt) {
+        document.addEventListener("keyup", function(evt) {
             ret.onKeyUp(evt);
         }, false);
         ret.ctx = canvas.getContext("2d");
@@ -209,107 +217,110 @@ var Game = {
         ret.lives = 3;
         ret.ctx.scale(this.canvas.width / this.width,
             this.canvas.height / this.height);
+        this.wasp = Wasp.create();
+        this.balls = [];
         ret.newTurn();
         return this;
     },
-    newTurn: function () {
-        this.wasp = Wasp.create();
+    newTurn: function() {
+        this.wasp.teleport(this.width / 2, this.height / 2);
         this.balls = [Ball.create()];
     },
-    onKeyUp: function (evt) {
+    onKeyUp: function(evt) {
         switch (evt.keyCode) {
-        case 32:
-            // space
-            this.wasp.unaccel();
-            break;
-        case 37:
-            // left
-            this.wasp.toRight();
-            break;
-        case 38:
-            // up
-            this.wasp.toDown();
-            break;
-        case 39:
-            // right
-            this.wasp.toLeft();
-            break;
-        case 40:
-            // down
-            this.wasp.toUp();
-            break;
+            case 32:
+                // space
+                this.wasp.unaccel();
+                break;
+            case 37:
+                // left
+                this.wasp.toRight();
+                break;
+            case 38:
+                // up
+                this.wasp.toDown();
+                break;
+            case 39:
+                // right
+                this.wasp.toLeft();
+                break;
+            case 40:
+                // down
+                this.wasp.toUp();
+                break;
         }
     },
-    onKeyDown: function (evt) {
+    onKeyDown: function(evt) {
         switch (evt.keyCode) {
-        case 32:
-            // space
-            this.wasp.accelerate();
-            break;
-        case 37:
-            // left
-            this.wasp.toLeft();
-            break;
-        case 38:
-            // up
-            this.wasp.toUp();
-            break;
-        case 39:
-            // right
-            this.wasp.toRight();
-            break;
-        case 40:
-            // down
-            this.wasp.toDown();
-            break;
+            case 32:
+                // space
+                this.wasp.accelerate();
+                break;
+            case 37:
+                // left
+                this.wasp.toLeft();
+                break;
+            case 38:
+                // up
+                this.wasp.toUp();
+                break;
+            case 39:
+                // right
+                this.wasp.toRight();
+                break;
+            case 40:
+                // down
+                this.wasp.toDown();
+                break;
         }
     },
-    startLoop: function () {
+    startLoop: function() {
         var jswut = this;
-        this.loopHandle = setInterval(function () {
+        this.loopHandle = setInterval(function() {
             jswut.loop();
         }, 1000 / this.fps);
     },
-    stopLoop: function () {
+    stopLoop: function() {
         clearInterval(this.loopHandle);
     },
-    loop: function () {
+    loop: function() {
         this.physics();
         this.draw();
         this.ticks++;
     },
-    physics: function () {
+    physics: function() {
         var i;
-        this.wasp.step();
-        this.checkOOB(this.wasp);
+        this.wasp.step(this);
         for (i = 0; i < this.balls.length; i++) {
-            this.balls[i].step();
-            this.checkOOB(this.balls[i]);
+            this.balls[i].step(this);
         }
         this.checkCollisions();
 
     },
-    checkOOB: function (obj) {
+    checkOOB: function(obj) {
         var bb = obj.getBoundingBox();
         var width = this.width;
         var height = this.height;
-        var xdiff = (bb.xmin < 0) ? bb.xmin : (bb.xmax > width) ? bb.xmax - width : 0;
-        var ydiff = (bb.ymin < 0) ? bb.ymin : (bb.ymax > height) ? bb.ymax - height : 0;
-        if (xdiff !== 0 || ydiff !== 0) {
-            obj.onBounce(xdiff, ydiff);
-        }
+        var xdiff = (bb.xmin < 0) ? bb.xmin : (bb.xmax > width) ? bb.xmax -
+            width : 0;
+        var ydiff = (bb.ymin < 0) ? bb.ymin : (bb.ymax > height) ? bb.ymax -
+            height : 0;
+        return {
+            x: xdiff,
+            y: ydiff
+        };
     },
-    checkCollisions: function () {
+    checkCollisions: function() {
         var wbb = this.wasp.getBoundingBox();
         var i;
         for (i = 0; i < this.balls.length; i++) {
             if (wbb.collides(this.balls[i].getBoundingBox())) {
-                this.stopTurn();
+                this.stopTurn(this.balls[i]);
                 break;
             }
         }
     },
-    draw: function () {
+    draw: function() {
         var ctx = this.ctx;
         var i;
         ctx.clearRect(0, 0, this.width, this.height);
@@ -320,12 +331,27 @@ var Game = {
         ctx.fillStyle = "#000000";
         ctx.textAlign = "right";
         ctx.fillText(this.score, this.width - 20, 20);
+
+        for (i = 0; i < this.lives; i++) {
+            this.drawHeart(ctx, this.width - 50 - 20 * i, 20);
+        }
     },
-    addBall: function (ball) {
+    drawHeart: function(ctx, x, y) {
+        var size = 5;
+        ctx.fillStyle = "#ff0000";
+        ctx.beginPath();
+        ctx.arc(x - size, y, size, Math.PI, 0, false);
+        ctx.arc(x + size, y, size, Math.PI, 0, false);
+        ctx.lineTo(x, y + size * 2);
+        ctx.lineTo(x - size * 2, y);
+        ctx.closePath();
+        ctx.fill();
+    },
+    addBall: function(ball) {
         this.balls.push(ball);
         this.score += 9;
     },
-    stopTurn: function () {
+    stopTurn: function() {
         this.lives -= 1;
         if (this.lives === 0) {
             document.writeln("game over");
@@ -337,7 +363,7 @@ var Game = {
 };
 
 
-window.onload = function () {
+window.onload = function() {
     var ctx = document.getElementById("screen");
     ctx.width = window.innerWidth - 2;
     ctx.height = window.innerHeight - 10;
